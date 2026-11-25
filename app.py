@@ -230,6 +230,139 @@ with g2:
 
 st.divider()
 
+# =====================================================================
+# LIVE CHECK: type any latitude / longitude
+# =====================================================================
+st.subheader("🔎 Check any plant on Earth (live)")
+st.caption("Type the coordinates of any steel plant, refinery, cement or power plant. The app pulls real "
+           "Landsat 8/9 thermal images for that point right now and runs the same AI on them.")
+
+
+@st.cache_data(show_spinner=False, ttl=6 * 3600)
+def run_live(lat, lon, months):
+    import live_check
+    return live_check.scan_plant(lat, lon, months)
+
+
+with st.form("live_check"):
+    f1, f2, f3, f4 = st.columns([2, 2, 2, 3])
+    live_lat = f1.number_input("Latitude", -80.0, 80.0, 15.1890, step=0.0001, format="%.4f")
+    live_lon = f2.number_input("Longitude", -180.0, 180.0, 76.6562, step=0.0001, format="%.4f")
+    live_months = f3.selectbox("Period", [6, 12], index=1, format_func=lambda m: f"Last {m} months")
+    live_name = f4.text_input("Plant name (optional)", "")
+    g1, g2, g3 = st.columns([2, 2, 3])
+    live_cap = g1.number_input("Capacity (units per year, optional)", 0.0, value=0.0, step=100000.0,
+                               help="e.g. tonnes of steel per year, or barrels per year")
+    live_price = g2.number_input("Price per unit in US$ (optional)", 0.0, value=0.0, step=10.0)
+    go_live = f4.form_submit_button("🛰️ Analyse this plant", type="primary")
+    g3.caption("Tip: right-click the plant in Google Maps to copy its coordinates. "
+               "The app searches 2 km around your point for the hottest spot. Takes about 20-60 s.")
+
+if go_live:
+    st.session_state["live_req"] = (round(live_lat, 4), round(live_lon, 4), live_months,
+                                    live_name, live_cap, live_price)
+
+if "live_req" in st.session_state:
+    lat_q, lon_q, months_q, name_q, cap_q, price_q = st.session_state["live_req"]
+    label = name_q or f"Plant at {lat_q:.4f}, {lon_q:.4f}"
+    try:
+        with st.spinner(f"Fetching real Landsat thermal images for {label}... (20-60 s)"):
+            out = run_live(lat_q, lon_q, months_q)
+    except ImportError:
+        out = {"error": "The live check needs the satellite libraries (rasterio, pystac-client, "
+                        "planetary-computer). They are installed on the online version of this site."}
+    except Exception as e:  # noqa: BLE001
+        out = {"error": f"Satellite service did not answer ({type(e).__name__}). Please try again."}
+
+    if "error" in out:
+        st.warning(out["error"])
+    else:
+        ld = out["data"]
+        last = ld.iloc[-1]
+        lvl = str(last["risk_level"])
+        median_heat = float(ld["delta_t"].median())
+        head = (f"**{label}** - latest clear pass {last['date']:%d %b %Y} - "
+                f"Activity Index **{int(last['activity_index'])}/100**  \n_{last['explanation']}_")
+        if median_heat < 2.0:
+            st.info(f"ℹ️ Weak heat signal ({median_heat:.1f} °C above surroundings on a typical pass). "
+                    "This point may not be a hot industrial site; check the coordinates.  \n" + head)
+        elif "alert" in lvl.lower():
+            st.error("🚨 ALERT: possible shutdown or major slowdown. " + head)
+        elif "watch" in lvl.lower():
+            st.warning("🟡 WATCH: activity below normal. " + head)
+        else:
+            st.success("🟢 NORMAL operation. " + head)
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Activity Index", f"{int(last['activity_index'])}/100")
+        m2.metric("Heat above surroundings", f"{last['delta_t']:.1f} °C",
+                  f"{last['delta_t'] - last['expected_delta_t']:+.1f} vs usual")
+        m3.metric("Typical heat signal", f"{median_heat:.1f} °C")
+        m4.metric("Clear passes analysed", f"{len(ld)} of {out['passes_found']}")
+
+        l1, l2 = st.columns([1, 2])
+        with l1:
+            st.map(pd.DataFrame({"lat": [lat_q, out["hot_lat"]], "lon": [lon_q, out["hot_lon"]],
+                                 "color": ["#9e9e9e", "#e02424"]}),
+                   latitude="lat", longitude="lon", color="color", size=120, zoom=12, height=300)
+            st.caption(f"Grey = your point · Red = hot spot found by the AI "
+                       f"({out['moved_m']:.0f} m away, {out['hot_lat']:.4f}, {out['hot_lon']:.4f})")
+        with l2:
+            lf = go.Figure()
+            lf.add_trace(go.Scatter(x=ld["date"], y=ld["delta_t"], mode="lines+markers",
+                                    name="Plant minus surroundings", line=dict(width=3, color="#e4572e"),
+                                    text=ld["risk_level"],
+                                    hovertemplate="%{x|%d %b %Y}<br>%{y:.1f} °C<br>%{text}<extra></extra>"))
+            lf.add_trace(go.Scatter(x=ld["date"], y=ld["expected_delta_t"], mode="lines",
+                                    name="AI's expected heat", line=dict(dash="dash", color="#1f77b4")))
+            flag = ld[ld["risk_level"].str.lower().str.contains("alert|watch")]
+            if len(flag):
+                lf.add_trace(go.Scatter(x=flag["date"], y=flag["delta_t"], mode="markers", name="Flagged",
+                                        marker=dict(size=14, color="#ff9f1c", symbol="x")))
+            lf.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10),
+                             yaxis_title="°C above surroundings", legend=dict(orientation="h", y=-0.2))
+            st.plotly_chart(lf, width="stretch")
+
+        frames = out["frames"]
+        hi_d = ld.loc[(ld["delta_t"] - ld["delta_t"].quantile(0.75)).abs().idxmin(), "date"]
+        lo_d = ld.loc[ld["delta_t"].idxmin(), "date"]
+        imgs = [(k, frames.get(f"{k:%Y-%m-%d}")) for k in (hi_d, lo_d)]
+        imgs = [(k, v) for k, v in imgs if v is not None]
+        if len(imgs) == 2:
+            vmin = float(min(np.nanpercentile(v, 2) for _, v in imgs))
+            vmax = float(max(np.nanpercentile(v, 99.5) for _, v in imgs))
+            h1, h2 = st.columns(2)
+            for col, (k, v), title in zip((h1, h2), imgs, ("Typical busy pass", "Coolest pass")):
+                fig_h = px.imshow(v, color_continuous_scale="inferno", zmin=vmin, zmax=vmax,
+                                  labels=dict(color="°C"))
+                fig_h.update_layout(height=320, margin=dict(l=0, r=0, t=30, b=0),
+                                    title=f"{title}: {k:%d %b %Y}")
+                fig_h.update_xaxes(visible=False)
+                fig_h.update_yaxes(visible=False)
+                col.plotly_chart(fig_h, width="stretch")
+            st.caption("Real Landsat surface temperature, 3 km x 3 km around the hot spot. Cloudy pixels are blank.")
+
+        if cap_q > 0 and price_q > 0:
+            per_day = cap_q * price_q / 365
+            drop = max(0.0, 1 - float(last["heat_ratio"])) if "watch" in lvl.lower() or "alert" in lvl.lower() else 0.0
+            v1, v2 = st.columns(2)
+            v1.metric("Output value per day", f"${per_day / 1e6:,.1f}M")
+            v2.metric("Estimated value at risk per day (latest pass)", f"${per_day * min(drop, 1) / 1e6:,.1f}M",
+                      help="Value per day x how far heat is below the AI's expected level. 0 if normal.")
+
+        with st.expander("See every pass (table) and download"):
+            show = ld[["date", "plant_temp", "ambient_temp", "delta_t", "expected_delta_t",
+                       "activity_index", "risk_level", "explanation"]].copy()
+            show["date"] = show["date"].dt.strftime("%Y-%m-%d")
+            st.dataframe(show, width="stretch", hide_index=True)
+            st.download_button("Download CSV", show.to_csv(index=False).encode(),
+                               file_name=f"live_{lat_q:.4f}_{lon_q:.4f}.csv", mime="text/csv")
+        st.caption("Honest limits: Landsat passes about every 8 days and clouds hide some passes. "
+                   "The first 3 passes are used to learn the plant's normal heat, so they are never flagged.")
+
+st.divider()
+
+
 if data is None or data.empty:
     st.warning(f"No data yet for **{site['name']}**. Waiting for files from the data team.")
     st.stop()
