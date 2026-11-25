@@ -24,7 +24,7 @@ SITES = {
                  "lat": 22.3511, "lon": 69.8597, "file_name": "Jamnagar_Refinery_India"},
     "gary": {"name": "Gary Works Steel Plant", "country": "USA", "type": "Steel plant",
              "lat": 41.6139, "lon": -87.3364, "file_name": "Gary_Works_Steel_USA"},
-    "duisburg": {"name": "thyssenkrupp Duisburg Steelworks", "country": "Germany", "type": "Steel plant",
+    "duisburg": {"name": "Thyssenkrupp Duisburg Steelworks", "country": "Germany", "type": "Steel plant",
                  "lat": 51.4981, "lon": 6.7278, "file_name": "Thyssenkrupp_Duisburg_Germany"},
 }
 MAIN_SITE = list(SITES.keys())[0]
