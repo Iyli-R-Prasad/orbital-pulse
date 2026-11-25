@@ -1,0 +1,91 @@
+date,site_name,activity_index,anomaly_flag,risk_level,supply_chain_alert,anomaly_score,expected_delta_t,heat_ratio,z_score
+2025-11-16,Gary_Works_Steel_USA,49,0,Normal,Learning this plant's normal heat level (first passes). Plant 6.2 °C above surroundings vs usual 12.4 °C (-6.3 °C).,0.466,12.44,0.494,-1.87
+2025-11-17,Gary_Works_Steel_USA,55,0,Normal,Learning this plant's normal heat level (first passes). Plant 6.8 °C above surroundings vs usual 12.4 °C (-5.6 °C).,0.438,12.44,0.55,-1.66
+2026-02-13,Gary_Works_Steel_USA,56,0,Normal,Learning this plant's normal heat level (first passes). Plant 6.9 °C above surroundings vs usual 12.4 °C (-5.5 °C).,0.429,12.44,0.558,-1.64
+2026-03-01,Gary_Works_Steel_USA,82,0,Normal,Normal operating heat signature. Plant 5.6 °C above surroundings vs usual 6.8 °C (-1.2 °C).,0.364,6.85,0.819,-0.37
+2026-03-08,Gary_Works_Steel_USA,85,0,Normal,Normal operating heat signature. Plant 5.5 °C above surroundings vs usual 6.5 °C (-1.0 °C).,0.357,6.5,0.854,-0.28
+2026-03-09,Gary_Works_Steel_USA,96,0,Normal,Normal operating heat signature. Plant 5.9 °C above surroundings vs usual 6.2 °C (-0.2 °C).,0.35,6.15,0.959,-0.07
+2026-05-04,Gary_Works_Steel_USA,100,0,Normal,Normal operating heat signature. Plant 10.3 °C above surroundings vs usual 6.0 °C (+4.2 °C).,0.458,6.03,1.705,1.26
+2026-05-11,Gary_Works_Steel_USA,100,0,Normal,Normal operating heat signature. Plant 11.3 °C above surroundings vs usual 6.4 °C (+5.0 °C).,0.459,6.38,1.779,1.48
+2026-05-27,Gary_Works_Steel_USA,100,0,Normal,Hotter than usual - high activity. Plant 14.4 °C above surroundings vs usual 6.4 °C (+8.0 °C).,0.576,6.42,2.251,2.39
+2026-05-28,Gary_Works_Steel_USA,100,0,Normal,Normal operating heat signature. Plant 14.5 °C above surroundings vs usual 8.1 °C (+6.5 °C).,0.509,8.09,1.8,1.92
+2026-06-12,Gary_Works_Steel_USA,100,0,Normal,Normal operating heat signature. Plant 13.6 °C above surroundings vs usual 10.8 °C (+2.8 °C).,0.41,10.8,1.254,0.82
+2026-06-20,Gary_Works_Steel_USA,100,0,Normal,Normal operating heat signature. Plant 15.5 °C above surroundings vs usual 12.4 °C (+3.1 °C).,0.382,12.44,1.245,0.91
+2026-07-06,Gary_Works_Steel_USA,100,0,Normal,Normal operating heat signature. Plant 14.2 °C above surroundings vs usual 14.0 °C (+0.2 °C).,0.361,14.0,1.011,0.04
+2026-07-07,Gary_Works_Steel_USA,98,0,Normal,Normal operating heat signature. Plant 14.0 °C above surroundings vs usual 14.3 °C (-0.3 °C).,0.35,14.3,0.982,-0.08
+2026-07-14,Gary_Works_Steel_USA,100,0,Normal,Normal operating heat signature. Plant 16.3 °C above surroundings vs usual 14.3 °C (+2.0 °C).,0.373,14.3,1.141,0.6
+2026-07-15,Gary_Works_Steel_USA,100,0,Normal,Normal operating heat signature. Plant 17.6 °C above surroundings vs usual 14.3 °C (+3.2 °C).,0.386,14.35,1.223,0.95
+2026-07-30,Gary_Works_Steel_USA,93,0,Normal,Normal operating heat signature. Plant 13.8 °C above surroundings vs usual 14.8 °C (-1.1 °C).,0.404,14.83,0.927,-0.32
+2026-08-07,Gary_Works_Steel_USA,100,0,Normal,Normal operating heat signature. Plant 15.3 °C above surroundings vs usual 14.8 °C (+0.5 °C).,0.355,14.83,1.031,0.14
+2026-08-23,Gary_Works_Steel_USA,98,0,Normal,Normal operating heat signature. Plant 14.4 °C above surroundings vs usual 14.7 °C (-0.3 °C).,0.357,14.72,0.978,-0.1
+2026-08-24,Gary_Works_Steel_USA,97,0,Normal,Normal operating heat signature. Plant 14.5 °C above surroundings vs usual 14.8 °C (-0.4 °C).,0.349,14.84,0.974,-0.11
+2026-10-02,Gary_Works_Steel_USA,26,1,Bottleneck Alert,Much cooler than usual - running far below capacity. Plant 3.8 °C above surroundings vs usual 14.9 °C (-11.1 °C). Both checks agree.,0.642,14.88,0.257,-3.28
+2026-10-03,Gary_Works_Steel_USA,58,0,Watch (Low),"Cooler than usual - possible slowdown, monitor next pass. Plant 8.3 °C above surroundings vs usual 14.4 °C (-6.1 °C).",0.501,14.43,0.578,-1.81
+2026-10-18,Gary_Works_Steel_USA,63,0,Watch (Low),"Cooler than usual - possible slowdown, monitor next pass. Plant 8.9 °C above surroundings vs usual 14.1 °C (-5.2 °C).",0.424,14.08,0.632,-1.54
+2026-10-19,Gary_Works_Steel_USA,86,0,Normal,Normal operating heat signature. Plant 10.0 °C above surroundings vs usual 11.7 °C (-1.7 °C).,0.364,11.65,0.857,-0.49
+2025-11-15,JSW_Vijayanagar_Steel_India,59,0,Normal,Learning this plant's normal heat level (first passes). Plant 1.7 °C above surroundings vs usual 2.9 °C (-1.2 °C).,0.395,2.92,0.592,-0.63
+2025-12-01,JSW_Vijayanagar_Steel_India,75,0,Normal,Learning this plant's normal heat level (first passes). Plant 2.2 °C above surroundings vs usual 2.9 °C (-0.7 °C).,0.368,2.92,0.747,-0.39
+2025-12-09,JSW_Vijayanagar_Steel_India,100,0,Normal,Learning this plant's normal heat level (first passes). Plant 3.2 °C above surroundings vs usual 2.9 °C (+0.2 °C).,0.357,2.92,1.086,0.13
+2025-12-17,JSW_Vijayanagar_Steel_India,100,0,Normal,Normal operating heat signature. Plant 4.1 °C above surroundings vs usual 2.2 °C (+1.9 °C).,0.46,2.18,1.894,1.03
+2025-12-25,JSW_Vijayanagar_Steel_India,100,0,Normal,Normal operating heat signature. Plant 3.5 °C above surroundings vs usual 2.7 °C (+0.8 °C).,0.407,2.67,1.312,0.44
+2026-01-10,JSW_Vijayanagar_Steel_India,62,0,Normal,Normal operating heat signature. Plant 2.0 °C above surroundings vs usual 3.2 °C (-1.2 °C).,0.415,3.17,0.618,-0.64
+2026-01-18,JSW_Vijayanagar_Steel_India,96,0,Normal,Normal operating heat signature. Plant 2.6 °C above surroundings vs usual 2.7 °C (-0.1 °C).,0.354,2.67,0.961,-0.06
+2026-02-11,JSW_Vijayanagar_Steel_India,100,0,Normal,Normal operating heat signature. Plant 3.6 °C above surroundings vs usual 2.9 °C (+0.7 °C).,0.375,2.87,1.244,0.37
+2026-02-19,JSW_Vijayanagar_Steel_India,100,0,Normal,Normal operating heat signature. Plant 3.7 °C above surroundings vs usual 3.3 °C (+0.4 °C).,0.356,3.34,1.108,0.19
+2026-02-27,JSW_Vijayanagar_Steel_India,74,0,Normal,Normal operating heat signature. Plant 2.6 °C above surroundings vs usual 3.5 °C (-0.9 °C).,0.378,3.54,0.74,-0.49
+2026-03-07,JSW_Vijayanagar_Steel_India,0,1,Cold / Shutdown Alert,Almost no waste heat - looks shut down or idle. Plant -0.3 °C above surroundings vs usual 3.1 °C (-3.4 °C). Both checks agree.,0.557,3.06,-0.111,-1.8
+2026-03-15,JSW_Vijayanagar_Steel_India,100,0,Normal,Normal operating heat signature. Plant 5.0 °C above surroundings vs usual 2.6 °C (+2.4 °C).,0.573,2.59,1.934,1.29
+2026-03-23,JSW_Vijayanagar_Steel_India,100,0,Normal,Normal operating heat signature. Plant 4.2 °C above surroundings vs usual 3.1 °C (+1.2 °C).,0.429,3.09,1.37,0.61
+2026-03-31,JSW_Vijayanagar_Steel_India,100,0,Normal,Normal operating heat signature. Plant 4.3 °C above surroundings vs usual 3.6 °C (+0.6 °C).,0.369,3.63,1.172,0.33
+2026-04-08,JSW_Vijayanagar_Steel_India,75,0,Normal,Normal operating heat signature. Plant 3.0 °C above surroundings vs usual 4.0 °C (-1.0 °C).,0.386,3.97,0.746,-0.54
+2026-04-16,JSW_Vijayanagar_Steel_India,81,0,Normal,Normal operating heat signature. Plant 2.9 °C above surroundings vs usual 3.6 °C (-0.7 °C).,0.356,3.6,0.811,-0.36
+2026-04-24,JSW_Vijayanagar_Steel_India,0,1,Cold / Shutdown Alert,Almost no waste heat - looks shut down or idle. Plant -1.2 °C above surroundings vs usual 3.6 °C (-4.8 °C). Both checks agree.,0.619,3.6,-0.342,-2.56
+2026-05-02,JSW_Vijayanagar_Steel_India,53,0,Normal,Normal operating heat signature. Plant 1.9 °C above surroundings vs usual 3.6 °C (-1.7 °C).,0.483,3.6,0.525,-0.91
+2026-05-10,JSW_Vijayanagar_Steel_India,73,0,Normal,Normal operating heat signature. Plant 2.1 °C above surroundings vs usual 2.9 °C (-0.8 °C).,0.367,2.94,0.728,-0.42
+2026-07-13,JSW_Vijayanagar_Steel_India,100,0,Normal,Normal operating heat signature. Plant 4.6 °C above surroundings vs usual 2.5 °C (+2.1 °C).,0.464,2.53,1.814,1.09
+2026-09-15,JSW_Vijayanagar_Steel_India,100,0,Normal,Hotter than usual - high activity. Plant 7.2 °C above surroundings vs usual 2.5 °C (+4.7 °C).,0.662,2.53,2.862,2.5
+2026-10-09,JSW_Vijayanagar_Steel_India,0,1,Cold / Shutdown Alert,Almost no waste heat - looks shut down or idle. Plant -6.2 °C above surroundings vs usual 2.5 °C (-8.7 °C). Both checks agree.,0.801,2.53,-2.455,-4.63
+2026-10-25,JSW_Vijayanagar_Steel_India,0,0,Watch (Low),"Cooler than usual - possible slowdown, monitor next pass. Plant 0.0 °C above surroundings vs usual 2.0 °C (-2.0 °C).",0.632,2.02,0.005,-1.06
+2025-11-10,Jamnagar_Refinery_India,98,0,Normal,Learning this plant's normal heat level (first passes). Plant 5.2 °C above surroundings vs usual 5.3 °C (-0.1 °C).,0.348,5.31,0.979,-0.09
+2025-11-18,Jamnagar_Refinery_India,75,0,Normal,Learning this plant's normal heat level (first passes). Plant 4.0 °C above surroundings vs usual 5.3 °C (-1.3 °C).,0.416,5.31,0.748,-1.13
+2025-11-26,Jamnagar_Refinery_India,91,0,Normal,Learning this plant's normal heat level (first passes). Plant 4.8 °C above surroundings vs usual 5.3 °C (-0.5 °C).,0.375,5.31,0.906,-0.42
+2025-12-04,Jamnagar_Refinery_India,89,0,Normal,Normal operating heat signature. Plant 4.3 °C above surroundings vs usual 4.8 °C (-0.5 °C).,0.365,4.81,0.886,-0.46
+2025-12-12,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 5.1 °C above surroundings vs usual 4.5 °C (+0.6 °C).,0.376,4.54,1.131,0.5
+2025-12-20,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 6.0 °C above surroundings vs usual 4.8 °C (+1.2 °C).,0.384,4.81,1.239,0.97
+2025-12-28,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 5.0 °C above surroundings vs usual 5.0 °C (+0.1 °C).,0.382,4.97,1.014,0.06
+2026-01-05,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 5.4 °C above surroundings vs usual 4.9 °C (+0.5 °C).,0.362,4.93,1.096,0.4
+2026-01-13,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 5.3 °C above surroundings vs usual 5.1 °C (+0.2 °C).,0.356,5.08,1.044,0.19
+2026-01-21,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 6.0 °C above surroundings vs usual 5.2 °C (+0.7 °C).,0.369,5.22,1.142,0.62
+2026-02-06,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 5.9 °C above surroundings vs usual 5.4 °C (+0.6 °C).,0.366,5.36,1.111,0.5
+2026-02-14,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 7.0 °C above surroundings vs usual 5.7 °C (+1.3 °C).,0.408,5.67,1.235,1.12
+2026-02-22,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 7.2 °C above surroundings vs usual 5.7 °C (+1.5 °C).,0.416,5.67,1.272,1.3
+2026-03-02,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 6.2 °C above surroundings vs usual 6.0 °C (+0.3 °C).,0.396,5.95,1.043,0.21
+2026-03-10,Jamnagar_Refinery_India,99,0,Normal,Normal operating heat signature. Plant 6.0 °C above surroundings vs usual 6.1 °C (-0.1 °C).,0.355,6.08,0.989,-0.05
+2026-03-18,Jamnagar_Refinery_India,90,0,Normal,Normal operating heat signature. Plant 5.5 °C above surroundings vs usual 6.1 °C (-0.6 °C).,0.367,6.11,0.901,-0.51
+2026-03-26,Jamnagar_Refinery_India,82,0,Normal,Normal operating heat signature. Plant 5.0 °C above surroundings vs usual 6.1 °C (-1.1 °C).,0.39,6.11,0.824,-0.9
+2026-04-11,Jamnagar_Refinery_India,91,0,Normal,Normal operating heat signature. Plant 5.5 °C above surroundings vs usual 6.1 °C (-0.6 °C).,0.364,6.11,0.906,-0.48
+2026-04-19,Jamnagar_Refinery_India,75,0,Normal,Normal operating heat signature. Plant 4.3 °C above surroundings vs usual 5.8 °C (-1.5 °C).,0.429,5.78,0.749,-1.22
+2026-04-27,Jamnagar_Refinery_India,73,0,Normal,Normal operating heat signature. Plant 4.1 °C above surroundings vs usual 5.5 °C (-1.5 °C).,0.41,5.52,0.735,-1.23
+2026-05-05,Jamnagar_Refinery_India,43,0,Watch (Low),"Cooler than usual - possible slowdown, monitor next pass. Plant 2.3 °C above surroundings vs usual 5.3 °C (-3.0 °C).",0.541,5.27,0.43,-2.53
+2026-05-13,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 4.9 °C above surroundings vs usual 4.7 °C (+0.2 °C).,0.458,4.68,1.039,0.16
+2026-05-21,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 5.2 °C above surroundings vs usual 4.6 °C (+0.6 °C).,0.367,4.6,1.133,0.51
+2026-05-29,Jamnagar_Refinery_India,100,0,Normal,Hotter than usual - high activity. Plant 9.3 °C above surroundings vs usual 4.6 °C (+4.7 °C).,0.707,4.6,2.028,3.98
+2026-09-26,Jamnagar_Refinery_India,99,0,Normal,Normal operating heat signature. Plant 4.6 °C above surroundings vs usual 4.6 °C (-0.0 °C).,0.577,4.6,0.991,-0.03
+2026-10-04,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 6.9 °C above surroundings vs usual 4.7 °C (+2.1 °C).,0.52,4.72,1.455,1.8
+2026-10-12,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 6.4 °C above surroundings vs usual 5.0 °C (+1.4 °C).,0.43,5.04,1.272,1.15
+2026-10-20,Jamnagar_Refinery_India,100,0,Normal,Normal operating heat signature. Plant 6.6 °C above surroundings vs usual 5.8 °C (+0.8 °C).,0.375,5.81,1.136,0.66
+2026-10-28,Jamnagar_Refinery_India,63,0,Watch (Low),"Cooler than usual - possible slowdown, monitor next pass. Plant 4.1 °C above surroundings vs usual 6.5 °C (-2.4 °C).",0.509,6.51,0.629,-2.03
+2026-01-22,Thyssenkrupp_Duisburg_Germany,83,0,Normal,Learning this plant's normal heat level (first passes). Plant 8.6 °C above surroundings vs usual 10.4 °C (-1.8 °C).,0.353,10.41,0.828,-0.4
+2026-03-03,Thyssenkrupp_Duisburg_Germany,81,0,Normal,Learning this plant's normal heat level (first passes). Plant 8.4 °C above surroundings vs usual 10.4 °C (-2.0 °C).,0.355,10.41,0.809,-0.44
+2026-03-19,Thyssenkrupp_Duisburg_Germany,69,0,Normal,Learning this plant's normal heat level (first passes). Plant 7.2 °C above surroundings vs usual 10.4 °C (-3.2 °C).,0.389,10.41,0.692,-0.72
+2026-04-21,Thyssenkrupp_Duisburg_Germany,100,0,Normal,Normal operating heat signature. Plant 11.6 °C above surroundings vs usual 8.4 °C (+3.2 °C).,0.416,8.42,1.374,0.7
+2026-04-28,Thyssenkrupp_Duisburg_Germany,100,0,Normal,Normal operating heat signature. Plant 13.5 °C above surroundings vs usual 8.5 °C (+4.9 °C).,0.419,8.52,1.579,1.1
+2026-04-29,Thyssenkrupp_Duisburg_Germany,100,0,Normal,Normal operating heat signature. Plant 11.0 °C above surroundings vs usual 8.6 °C (+2.4 °C).,0.415,8.62,1.278,0.54
+2026-05-22,Thyssenkrupp_Duisburg_Germany,100,0,Normal,Normal operating heat signature. Plant 13.8 °C above surroundings vs usual 9.8 °C (+4.0 °C).,0.398,9.82,1.405,0.89
+2026-06-24,Thyssenkrupp_Duisburg_Germany,100,0,Normal,Normal operating heat signature. Plant 12.2 °C above surroundings vs usual 11.3 °C (+1.0 °C).,0.364,11.29,1.085,0.21
+2026-07-01,Thyssenkrupp_Duisburg_Germany,100,0,Normal,Normal operating heat signature. Plant 16.0 °C above surroundings vs usual 11.9 °C (+4.1 °C).,0.401,11.91,1.343,0.91
+2026-07-10,Thyssenkrupp_Duisburg_Germany,63,0,Normal,Normal operating heat signature. Plant 8.1 °C above surroundings vs usual 12.8 °C (-4.7 °C).,0.467,12.85,0.633,-1.05
+2026-07-25,Thyssenkrupp_Duisburg_Germany,88,0,Normal,Normal operating heat signature. Plant 11.2 °C above surroundings vs usual 12.8 °C (-1.6 °C).,0.374,12.85,0.875,-0.36
+2026-08-02,Thyssenkrupp_Duisburg_Germany,16,0,Watch (Low),"Cooler than usual - possible slowdown, monitor next pass. Plant 1.9 °C above surroundings vs usual 11.8 °C (-9.9 °C).",0.543,11.75,0.157,-2.21
+2026-08-11,Thyssenkrupp_Duisburg_Germany,83,0,Normal,Normal operating heat signature. Plant 9.8 °C above surroundings vs usual 11.8 °C (-2.0 °C).,0.437,11.75,0.834,-0.43
+2026-10-05,Thyssenkrupp_Duisburg_Germany,80,0,Normal,Normal operating heat signature. Plant 8.4 °C above surroundings vs usual 10.5 °C (-2.1 °C).,0.362,10.52,0.799,-0.47

@@ -130,7 +130,7 @@ steps = st.columns(4)
 for col, icon, title, text in [
     (steps[0], "🛰️", "1. Satellite", "Landsat measures heat from space"),
     (steps[1], "🔥", "2. Heat signal", "Plant heat minus surroundings"),
-    (steps[2], "🤖", "3. AI", "Isolation Forest spots unusual drops"),
+    (steps[2], "🤖", "3. AI", "Physics rule + Isolation Forest must agree"),
     (steps[3], "🚨", "4. Alert", "Customers warned of supply risk"),
 ]:
     with col:
@@ -204,7 +204,7 @@ c1.metric("Activity Index", f"{int(latest['activity_index'])}/100",
 c2.metric("Plant temperature", f"{latest['plant_temp']:.1f} °C")
 c3.metric("Heat above surroundings", f"{latest['thermal_delta']:.1f} °C")
 c4.metric("Shutdown alerts (period)", int(data["anomaly_flag"].sum()))
-src = ("AI model (Isolation Forest)" if info.get("ai_source") == "model"
+src = ("hybrid AI model (physics rule + Isolation Forest)" if info.get("ai_source") == "model"
        else "preliminary statistical baseline (AI model results coming)")
 st.caption(f"Real Landsat 8/9 thermal data · {len(data)} clear passes · "
            f"{info.get('cloudy_removed', 0)} cloudy passes removed (> {MAX_CLOUD}% cloud) · Scoring: {src}")
@@ -273,6 +273,27 @@ if not events.empty:
     st.plotly_chart(wf, width="stretch")
 
 # =====================================================================
+# MODEL VALIDATION
+# =====================================================================
+if info.get("ai_source") == "model" and os.path.exists("model_report.json"):
+    import json
+    with open("model_report.json") as f:
+        rep = json.load(f)
+    v = rep.get("validation", {})
+    st.subheader("🧪 How reliable is the AI?")
+    st.caption("We took the real satellite data and inserted simulated shutdowns (heat cut to 0-30 % of normal) "
+               "and slowdowns (40-70 %), then measured how many the model catches. "
+               "A full alert needs BOTH the physics rule and the Isolation Forest to agree, which keeps false alarms low.")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Shutdowns caught (all plants)", f"{v.get('shutdown_detection_pct', 0):.0f}%")
+    m2.metric(f"Shutdowns caught ({site['name'].split()[0]})",
+              f"{v.get('shutdown_detection_by_plant_pct', {}).get(site['file_name'], 0):.0f}%")
+    m3.metric("Slowdowns flagged", f"{v.get('slowdown_detection_pct', 0):.0f}%")
+    m4.metric("Alert rate on real data", f"{v.get('alert_rate_on_real_data_pct', 0):.1f}%")
+    st.caption("Detection is strongest at plants with a strong heat signature (e.g. Jamnagar) and weaker where "
+               "the plant is only slightly warmer than its surroundings - better targeting of hot zones improves this.")
+
+# =====================================================================
 # TEMPERATURE GRAPH (thermal delta idea)
 # =====================================================================
 st.subheader("🌡️ Plant heat vs. surroundings")
@@ -337,4 +358,5 @@ st.caption("Example inputs only: replace with real plant capacity and market pri
 with st.expander("📄 See the data"):
     st.dataframe(data, width="stretch")
 
-st.caption("Data: Landsat 8/9 thermal (Band 10). AI: Isolation Forest anomaly detection.")
+st.caption("Data: Landsat 8/9 Collection 2 surface temperature (Band 10) via Microsoft Planetary Computer. "
+           "AI: hybrid physics rule + Isolation Forest, validated with simulated shutdowns.")
