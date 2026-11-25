@@ -4,6 +4,7 @@ Orbital Industrial Pulse - Dashboard (Person 3)
 Run:
     py -m streamlit run app.py
 """
+import json
 import os
 
 import numpy as np
@@ -159,19 +160,71 @@ def mtime(site_id):
 
 
 # =====================================================================
+# PLANTS ADDED FROM THE WEBSITE ("➕ Add a new plant")
+# Shared by everyone using the site; kept until the app restarts.
+# =====================================================================
+ADD_KEY = "__add__"
+CUSTOM_FILE = "custom_sites.json"
+
+
+@st.cache_resource
+def custom_store():
+    store = {}
+    if os.path.exists(CUSTOM_FILE):
+        try:
+            with open(CUSTOM_FILE) as f:
+                store.update(json.load(f))
+        except Exception:  # noqa: BLE001
+            pass
+    return store
+
+
+def save_custom():
+    try:
+        with open(CUSTOM_FILE, "w") as f:
+            json.dump(custom_store(), f)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+CUSTOM = custom_store()
+
+
+def all_sites():
+    return {**SITES, **CUSTOM}
+
+
+# =====================================================================
 # SIDEBAR
 # =====================================================================
+if "_goto" in st.session_state:                      # jump to a plant that was just added
+    st.session_state["site_sel"] = st.session_state.pop("_goto")
+
 with st.sidebar:
     st.header("🛰️ Choose a site")
-    site_id = st.selectbox("Industrial site", list(SITES.keys()),
-                           format_func=lambda k: f"{SITES[k]['country']} - {SITES[k]['name']}")
-    site = SITES[site_id]
-    st.write(f"**Type:** {site['type']}")
-    st.write(f"**Location:** {site['lat']:.2f}, {site['lon']:.2f}")
+    options = list(SITES.keys()) + list(CUSTOM.keys()) + [ADD_KEY]
+    if st.session_state.get("site_sel") not in options:
+        st.session_state["site_sel"] = options[0]
+    site_id = st.selectbox(
+        "Industrial site", options, key="site_sel",
+        format_func=lambda k: "➕ Add a new plant" if k == ADD_KEY
+        else f"{all_sites()[k]['country']} - {all_sites()[k]['name']}" + (" (added)" if k in CUSTOM else ""))
+    if site_id == ADD_KEY:
+        site = None
+        st.write("Type the coordinates of any plant on the main page.")
+    else:
+        site = all_sites()[site_id]
+        st.write(f"**Type:** {site['type']}")
+        st.write(f"**Location:** {site['lat']:.4f}, {site['lon']:.4f}")
+        if site_id in CUSTOM:
+            st.caption("Added from the website · analysed live from Landsat")
+            if st.button("🗑️ Remove this plant from the list"):
+                CUSTOM.pop(site_id, None)
+                save_custom()
+                st.session_state["_goto"] = options[0]
+                st.rerun()
     st.divider()
     st.caption("Works for any industrial site on Earth: satellites cover the whole planet.")
-
-data, info = load_site(site_id, mtime(site_id))
 
 # =====================================================================
 # HEADER + HOW IT WORKS
@@ -200,17 +253,23 @@ st.divider()
 STATUS_COLOR = {"alert": "#e02424", "watch": "#ff9f1c", "normal": "#1fa34a", "none": "#9e9e9e"}
 
 
+def level_key(lv):
+    lv = str(lv).lower()
+    return "alert" if "alert" in lv else "watch" if "watch" in lv else "normal"
+
+
 def site_status(sid):
+    if sid in CUSTOM:
+        c = CUSTOM[sid]
+        return c.get("status", "none"), c.get("activity")
     d, _ = load_site(sid, mtime(sid))
     if d is None or d.empty:
         return "none", None
-    lv = str(d.iloc[-1]["risk_level"]).lower()
-    key = "alert" if "alert" in lv else "watch" if "watch" in lv else "normal"
-    return key, int(d.iloc[-1]["activity_index"])
+    return level_key(d.iloc[-1]["risk_level"]), int(d.iloc[-1]["activity_index"])
 
 
 rows = []
-for sid, s in SITES.items():
+for sid, s in all_sites().items():
     key, act = site_status(sid)
     rows.append({"lat": s["lat"], "lon": s["lon"], "color": STATUS_COLOR[key],
                  "Site": s["name"], "Country": s["country"],
@@ -226,141 +285,195 @@ with g1:
 with g2:
     for _, r in overview.iterrows():
         st.markdown(f"{r['Status'].split()[0]} **{r['Site']}**  \n{r['Country']} · Activity {r['Activity']}")
-    st.caption("Pick a site in the left sidebar (») to see its details.")
+    st.caption("Pick a site in the left sidebar (») to see its details, or choose ➕ Add a new plant.")
 
 st.divider()
 
-# =====================================================================
-# LIVE CHECK: type any latitude / longitude
-# =====================================================================
-st.subheader("🔎 Check any plant on Earth (live)")
-st.caption("Type the coordinates of any steel plant, refinery, cement or power plant. The app pulls real "
-           "Landsat 8/9 thermal images for that point right now and runs the same AI on them.")
 
-
+# =====================================================================
+# LIVE SATELLITE CHECK (used for added plants and for live updates)
+# =====================================================================
 @st.cache_data(show_spinner=False, ttl=6 * 3600)
 def run_live(lat, lon, months):
     import live_check
     return live_check.scan_plant(lat, lon, months)
 
 
-with st.form("live_check"):
-    f1, f2, f3, f4 = st.columns([2, 2, 2, 3])
-    live_lat = f1.number_input("Latitude", -80.0, 80.0, 15.1890, step=0.0001, format="%.4f")
-    live_lon = f2.number_input("Longitude", -180.0, 180.0, 76.6562, step=0.0001, format="%.4f")
-    live_months = f3.selectbox("Period", [6, 12], index=1, format_func=lambda m: f"Last {m} months")
-    live_name = f4.text_input("Plant name (optional)", "")
-    g1, g2, g3 = st.columns([2, 2, 3])
-    live_cap = g1.number_input("Capacity (units per year, optional)", 0.0, value=0.0, step=100000.0,
-                               help="e.g. tonnes of steel per year, or barrels per year")
-    live_price = g2.number_input("Price per unit in US$ (optional)", 0.0, value=0.0, step=10.0)
-    go_live = f4.form_submit_button("🛰️ Analyse this plant", type="primary")
-    g3.caption("Tip: right-click the plant in Google Maps to copy its coordinates. "
-               "The app searches 2 km around your point for the hottest spot. Takes about 20-60 s.")
-
-if go_live:
-    st.session_state["live_req"] = (round(live_lat, 4), round(live_lon, 4), live_months,
-                                    live_name, live_cap, live_price)
-
-if "live_req" in st.session_state:
-    lat_q, lon_q, months_q, name_q, cap_q, price_q = st.session_state["live_req"]
-    label = name_q or f"Plant at {lat_q:.4f}, {lon_q:.4f}"
+def fetch_live(lat, lon, months, label):
     try:
         with st.spinner(f"Fetching real Landsat thermal images for {label}... (20-60 s)"):
-            out = run_live(lat_q, lon_q, months_q)
+            return run_live(round(lat, 4), round(lon, 4), months)
     except ImportError:
-        out = {"error": "The live check needs the satellite libraries (rasterio, pystac-client, "
-                        "planetary-computer). They are installed on the online version of this site."}
+        return {"error": "The live check needs the satellite libraries (rasterio, pystac-client, "
+                         "planetary-computer). They are installed on the online version of this site."}
     except Exception as e:  # noqa: BLE001
-        out = {"error": f"Satellite service did not answer ({type(e).__name__}). Please try again."}
+        return {"error": f"Satellite service did not answer ({type(e).__name__}). Please try again."}
 
+
+def show_live(out, label, lat_q, lon_q, cap_q=0.0, price_q=0.0):
     if "error" in out:
         st.warning(out["error"])
+        return
+    ld = out["data"]
+    last = ld.iloc[-1]
+    lvl = str(last["risk_level"])
+    median_heat = float(ld["delta_t"].median())
+    head = (f"**{label}** - latest clear pass {last['date']:%d %b %Y} - "
+            f"Activity Index **{int(last['activity_index'])}/100**  \n_{last['explanation']}_")
+    if median_heat < 2.0:
+        st.info(f"ℹ️ Weak heat signal ({median_heat:.1f} °C above surroundings on a typical pass). "
+                "This point may not be a hot industrial site; check the coordinates.  \n" + head)
+    elif "alert" in lvl.lower():
+        st.error("🚨 ALERT: possible shutdown or major slowdown. " + head)
+    elif "watch" in lvl.lower():
+        st.warning("🟡 WATCH: activity below normal. " + head)
     else:
-        ld = out["data"]
-        last = ld.iloc[-1]
-        lvl = str(last["risk_level"])
-        median_heat = float(ld["delta_t"].median())
-        head = (f"**{label}** - latest clear pass {last['date']:%d %b %Y} - "
-                f"Activity Index **{int(last['activity_index'])}/100**  \n_{last['explanation']}_")
-        if median_heat < 2.0:
-            st.info(f"ℹ️ Weak heat signal ({median_heat:.1f} °C above surroundings on a typical pass). "
-                    "This point may not be a hot industrial site; check the coordinates.  \n" + head)
-        elif "alert" in lvl.lower():
-            st.error("🚨 ALERT: possible shutdown or major slowdown. " + head)
-        elif "watch" in lvl.lower():
-            st.warning("🟡 WATCH: activity below normal. " + head)
-        else:
-            st.success("🟢 NORMAL operation. " + head)
+        st.success("🟢 NORMAL operation. " + head)
 
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Activity Index", f"{int(last['activity_index'])}/100")
-        m2.metric("Heat above surroundings", f"{last['delta_t']:.1f} °C",
-                  f"{last['delta_t'] - last['expected_delta_t']:+.1f} vs usual")
-        m3.metric("Typical heat signal", f"{median_heat:.1f} °C")
-        m4.metric("Clear passes analysed", f"{len(ld)} of {out['passes_found']}")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Activity Index", f"{int(last['activity_index'])}/100")
+    m2.metric("Heat above surroundings", f"{last['delta_t']:.1f} °C",
+              f"{last['delta_t'] - last['expected_delta_t']:+.1f} vs usual")
+    m3.metric("Typical heat signal", f"{median_heat:.1f} °C")
+    m4.metric("Clear passes analysed", f"{len(ld)} of {out['passes_found']}")
 
-        l1, l2 = st.columns([1, 2])
-        with l1:
-            st.map(pd.DataFrame({"lat": [lat_q, out["hot_lat"]], "lon": [lon_q, out["hot_lon"]],
-                                 "color": ["#9e9e9e", "#e02424"]}),
-                   latitude="lat", longitude="lon", color="color", size=120, zoom=12, height=300)
-            st.caption(f"Grey = your point · Red = hot spot found by the AI "
-                       f"({out['moved_m']:.0f} m away, {out['hot_lat']:.4f}, {out['hot_lon']:.4f})")
-        with l2:
-            lf = go.Figure()
-            lf.add_trace(go.Scatter(x=ld["date"], y=ld["delta_t"], mode="lines+markers",
-                                    name="Plant minus surroundings", line=dict(width=3, color="#e4572e"),
-                                    text=ld["risk_level"],
-                                    hovertemplate="%{x|%d %b %Y}<br>%{y:.1f} °C<br>%{text}<extra></extra>"))
-            lf.add_trace(go.Scatter(x=ld["date"], y=ld["expected_delta_t"], mode="lines",
-                                    name="AI's expected heat", line=dict(dash="dash", color="#1f77b4")))
-            flag = ld[ld["risk_level"].str.lower().str.contains("alert|watch")]
-            if len(flag):
-                lf.add_trace(go.Scatter(x=flag["date"], y=flag["delta_t"], mode="markers", name="Flagged",
-                                        marker=dict(size=14, color="#ff9f1c", symbol="x")))
-            lf.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10),
-                             yaxis_title="°C above surroundings", legend=dict(orientation="h", y=-0.2))
-            st.plotly_chart(lf, width="stretch")
+    l1, l2 = st.columns([1, 2])
+    with l1:
+        st.map(pd.DataFrame({"lat": [lat_q, out["hot_lat"]], "lon": [lon_q, out["hot_lon"]],
+                             "color": ["#9e9e9e", "#e02424"]}),
+               latitude="lat", longitude="lon", color="color", size=120, zoom=12, height=300)
+        st.caption(f"Grey = typed point · Red = hot spot found by the AI "
+                   f"({out['moved_m']:.0f} m away, {out['hot_lat']:.4f}, {out['hot_lon']:.4f})")
+    with l2:
+        lf = go.Figure()
+        lf.add_trace(go.Scatter(x=ld["date"], y=ld["delta_t"], mode="lines+markers",
+                                name="Plant minus surroundings", line=dict(width=3, color="#e4572e"),
+                                text=ld["risk_level"],
+                                hovertemplate="%{x|%d %b %Y}<br>%{y:.1f} °C<br>%{text}<extra></extra>"))
+        lf.add_trace(go.Scatter(x=ld["date"], y=ld["expected_delta_t"], mode="lines",
+                                name="AI's expected heat", line=dict(dash="dash", color="#1f77b4")))
+        flag = ld[ld["risk_level"].str.lower().str.contains("alert|watch")]
+        if len(flag):
+            lf.add_trace(go.Scatter(x=flag["date"], y=flag["delta_t"], mode="markers", name="Flagged",
+                                    marker=dict(size=14, color="#ff9f1c", symbol="x")))
+        lf.update_layout(height=300, margin=dict(l=10, r=10, t=10, b=10),
+                         yaxis_title="°C above surroundings", legend=dict(orientation="h", y=-0.2))
+        st.plotly_chart(lf, width="stretch")
 
-        frames = out["frames"]
-        hi_d = ld.loc[(ld["delta_t"] - ld["delta_t"].quantile(0.75)).abs().idxmin(), "date"]
-        lo_d = ld.loc[ld["delta_t"].idxmin(), "date"]
-        imgs = [(k, frames.get(f"{k:%Y-%m-%d}")) for k in (hi_d, lo_d)]
-        imgs = [(k, v) for k, v in imgs if v is not None]
-        if len(imgs) == 2:
-            vmin = float(min(np.nanpercentile(v, 2) for _, v in imgs))
-            vmax = float(max(np.nanpercentile(v, 99.5) for _, v in imgs))
-            h1, h2 = st.columns(2)
-            for col, (k, v), title in zip((h1, h2), imgs, ("Typical busy pass", "Coolest pass")):
-                fig_h = px.imshow(v, color_continuous_scale="inferno", zmin=vmin, zmax=vmax,
-                                  labels=dict(color="°C"))
-                fig_h.update_layout(height=320, margin=dict(l=0, r=0, t=30, b=0),
-                                    title=f"{title}: {k:%d %b %Y}")
-                fig_h.update_xaxes(visible=False)
-                fig_h.update_yaxes(visible=False)
-                col.plotly_chart(fig_h, width="stretch")
-            st.caption("Real Landsat surface temperature, 3 km x 3 km around the hot spot. Cloudy pixels are blank.")
+    frames = out["frames"]
+    hi_d = ld.loc[(ld["delta_t"] - ld["delta_t"].quantile(0.75)).abs().idxmin(), "date"]
+    lo_d = ld.loc[ld["delta_t"].idxmin(), "date"]
+    imgs = [(k, frames.get(f"{k:%Y-%m-%d}")) for k in (hi_d, lo_d)]
+    imgs = [(k, v) for k, v in imgs if v is not None]
+    if len(imgs) == 2:
+        vmin = float(min(np.nanpercentile(v, 2) for _, v in imgs))
+        vmax = float(max(np.nanpercentile(v, 99.5) for _, v in imgs))
+        h1, h2 = st.columns(2)
+        for col, (k, v), title in zip((h1, h2), imgs, ("Typical busy pass", "Coolest pass")):
+            fig_h = px.imshow(v, color_continuous_scale="inferno", zmin=vmin, zmax=vmax,
+                              labels=dict(color="°C"))
+            fig_h.update_layout(height=320, margin=dict(l=0, r=0, t=30, b=0),
+                                title=f"{title}: {k:%d %b %Y}")
+            fig_h.update_xaxes(visible=False)
+            fig_h.update_yaxes(visible=False)
+            col.plotly_chart(fig_h, width="stretch")
+        st.caption("Real Landsat surface temperature, 3 km x 3 km around the hot spot. Cloudy pixels are blank.")
 
-        if cap_q > 0 and price_q > 0:
-            per_day = cap_q * price_q / 365
-            drop = max(0.0, 1 - float(last["heat_ratio"])) if "watch" in lvl.lower() or "alert" in lvl.lower() else 0.0
-            v1, v2 = st.columns(2)
-            v1.metric("Output value per day", f"${per_day / 1e6:,.1f}M")
-            v2.metric("Estimated value at risk per day (latest pass)", f"${per_day * min(drop, 1) / 1e6:,.1f}M",
-                      help="Value per day x how far heat is below the AI's expected level. 0 if normal.")
+    if cap_q > 0 and price_q > 0:
+        per_day = cap_q * price_q / 365
+        drop = max(0.0, 1 - float(last["heat_ratio"])) if level_key(lvl) != "normal" else 0.0
+        v1, v2 = st.columns(2)
+        v1.metric("Output value per day", f"${per_day / 1e6:,.1f}M")
+        v2.metric("Estimated value at risk per day (latest pass)", f"${per_day * min(drop, 1) / 1e6:,.1f}M",
+                  help="Value per day x how far heat is below the AI's expected level. 0 if normal.")
 
-        with st.expander("See every pass (table) and download"):
-            show = ld[["date", "plant_temp", "ambient_temp", "delta_t", "expected_delta_t",
-                       "activity_index", "risk_level", "explanation"]].copy()
-            show["date"] = show["date"].dt.strftime("%Y-%m-%d")
-            st.dataframe(show, width="stretch", hide_index=True)
-            st.download_button("Download CSV", show.to_csv(index=False).encode(),
-                               file_name=f"live_{lat_q:.4f}_{lon_q:.4f}.csv", mime="text/csv")
-        st.caption("Honest limits: Landsat passes about every 8 days and clouds hide some passes. "
-                   "The first 3 passes are used to learn the plant's normal heat, so they are never flagged.")
+    with st.expander("See every pass (table) and download"):
+        show = ld[["date", "plant_temp", "ambient_temp", "delta_t", "expected_delta_t",
+                   "activity_index", "risk_level", "explanation"]].copy()
+        show["date"] = show["date"].dt.strftime("%Y-%m-%d")
+        st.dataframe(show, width="stretch", hide_index=True)
+        st.download_button("Download CSV", show.to_csv(index=False).encode(),
+                           file_name=f"live_{lat_q:.4f}_{lon_q:.4f}.csv", mime="text/csv")
+    st.caption("Honest limits: Landsat passes about every 8 days and clouds hide some passes. "
+               "The first 3 passes are used to learn the plant's normal heat, so they are never flagged.")
 
-st.divider()
+
+# ---------------------------------------------------------------------
+# PAGE 1: ➕ ADD A NEW PLANT
+# ---------------------------------------------------------------------
+if site_id == ADD_KEY:
+    st.subheader("➕ Add a new plant (live satellite tracking)")
+    st.caption("Type the coordinates of any steel plant, refinery, cement or power plant. The app pulls real "
+               "Landsat 8/9 thermal images for that point right now, runs the same AI, and adds the plant "
+               "to the list on the left. Tip: right-click the plant in Google Maps to copy its coordinates.")
+    with st.form("add_plant"):
+        a1, a2, a3 = st.columns([3, 2, 2])
+        new_name = a1.text_input("Plant name", placeholder="e.g. POSCO Pohang Steelworks")
+        new_country = a2.text_input("Country", placeholder="e.g. South Korea")
+        new_type = a3.selectbox("Type", ["Steel plant", "Oil refinery", "Cement plant", "Power plant",
+                                         "Aluminium smelter", "Other industrial site"])
+        b1, b2, b3 = st.columns([2, 2, 3])
+        new_lat = b1.number_input("Latitude", -80.0, 80.0, value=None, step=0.0001, format="%.4f",
+                                  placeholder="e.g. 36.0093")
+        new_lon = b2.number_input("Longitude", -180.0, 180.0, value=None, step=0.0001, format="%.4f",
+                                  placeholder="e.g. 129.3945")
+        new_months = b3.selectbox("Period", [6, 12], index=1, format_func=lambda m: f"Last {m} months")
+        c1, c2, c3 = st.columns([2, 2, 3])
+        new_cap = c1.number_input("Capacity (units per year, optional)", 0.0, value=0.0, step=100000.0,
+                                  help="e.g. tonnes of steel per year, or barrels per year")
+        new_price = c2.number_input("Price per unit in US$ (optional)", 0.0, value=0.0, step=10.0)
+        add_go = c3.form_submit_button("🛰️ Analyse and add to the list", type="primary")
+    if add_go:
+        if new_lat is None or new_lon is None:
+            st.warning("Please type both latitude and longitude.")
+            st.stop()
+        name = new_name.strip() or f"Plant at {new_lat:.4f}, {new_lon:.4f}"
+        out = fetch_live(new_lat, new_lon, new_months, name)
+        if "error" in out:
+            st.warning(out["error"] + " The plant was not added.")
+            st.stop()
+        last = out["data"].iloc[-1]
+        new_id = f"custom_{new_lat:.4f}_{new_lon:.4f}"
+        CUSTOM[new_id] = {"name": name, "country": new_country.strip() or "-", "type": new_type,
+                          "lat": round(float(new_lat), 4), "lon": round(float(new_lon), 4),
+                          "months": int(new_months), "capacity": float(new_cap), "price": float(new_price),
+                          "status": level_key(last["risk_level"]), "activity": int(last["activity_index"])}
+        save_custom()
+        st.session_state["_goto"] = new_id
+        st.rerun()
+    st.stop()
+
+# ---------------------------------------------------------------------
+# PAGE 2: A PLANT THAT WAS ADDED FROM THE WEBSITE
+# ---------------------------------------------------------------------
+if site_id in CUSTOM:
+    c = CUSTOM[site_id]
+    st.subheader(f"🛰️ {c['name']} ({c['country']}): live satellite tracking")
+    st.caption(f"{c['type']} · {c['lat']:.4f}, {c['lon']:.4f} · last {c.get('months', 12)} months of "
+               "real Landsat 8/9 data, analysed by the same hybrid AI as the main plants.")
+    out = fetch_live(c["lat"], c["lon"], c.get("months", 12), c["name"])
+    if "error" not in out:
+        last = out["data"].iloc[-1]
+        c["status"], c["activity"] = level_key(last["risk_level"]), int(last["activity_index"])
+    show_live(out, c["name"], c["lat"], c["lon"], c.get("capacity", 0.0), c.get("price", 0.0))
+    st.stop()
+
+# ---------------------------------------------------------------------
+# PAGE 3: ONE OF OUR MAIN PLANTS (full history below + optional live update)
+# ---------------------------------------------------------------------
+data, info = load_site(site_id, mtime(site_id))
+
+with st.expander(f"🛰️ Live update: fetch the newest Landsat images for {site['name']} now "
+                 f"({site['lat']:.4f}, {site['lon']:.4f})"):
+    lv1, lv2 = st.columns([2, 3])
+    live_months = lv1.selectbox("Period", [6, 12], index=1, format_func=lambda m: f"Last {m} months",
+                                key=f"months_{site_id}")
+    if lv2.button("Run live check", key=f"live_{site_id}", type="primary"):
+        st.session_state[f"live_on_{site_id}"] = live_months
+    if f"live_on_{site_id}" in st.session_state:
+        m_sel = st.session_state[f"live_on_{site_id}"]
+        show_live(fetch_live(site["lat"], site["lon"], m_sel, site["name"]), site["name"],
+                  site["lat"], site["lon"])
 
 
 if data is None or data.empty:
