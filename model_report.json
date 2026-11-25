@@ -1,41 +1,41 @@
 {
   "model": "Hybrid: physics rule (robust z-score vs plant's own baseline) + Isolation Forest",
-  "passes_analysed": 90,
+  "passes_analysed": 98,
   "plants": 4,
   "validation": {
-    "shutdown_detection_pct": 62.5,
-    "slowdown_detection_pct": 44.8,
-    "alert_rate_on_real_data_pct": 4.4,
+    "shutdown_detection_pct": 95.8,
+    "slowdown_detection_pct": 55.0,
+    "alert_rate_on_real_data_pct": 2.0,
     "shutdown_detection_by_plant_pct": {
-      "Gary_Works_Steel_USA": 83.0,
-      "JSW_Vijayanagar_Steel_India": 21.0,
-      "Jamnagar_Refinery_India": 99.0,
-      "Thyssenkrupp_Duisburg_Germany": 32.0
+      "Gary_Works_Steel_USA": 100.0,
+      "JSW_Vijayanagar_Steel_India": 100.0,
+      "Jamnagar_Refinery_India": 78.5,
+      "Thyssenkrupp_Duisburg_Germany": 100.0
     }
   },
   "per_plant": {
     "Gary_Works_Steel_USA": {
-      "passes": 24,
-      "alerts": 1,
-      "watch": 2,
+      "passes": 23,
+      "alerts": 0,
+      "watch": 1,
       "latest": "Normal"
     },
     "JSW_Vijayanagar_Steel_India": {
-      "passes": 23,
-      "alerts": 3,
+      "passes": 25,
+      "alerts": 1,
       "watch": 1,
-      "latest": "Watch (Low)"
+      "latest": "Normal"
     },
     "Jamnagar_Refinery_India": {
       "passes": 29,
-      "alerts": 0,
-      "watch": 2,
-      "latest": "Watch (Low)"
+      "alerts": 1,
+      "watch": 1,
+      "latest": "Normal"
     },
     "Thyssenkrupp_Duisburg_Germany": {
-      "passes": 14,
+      "passes": 21,
       "alerts": 0,
-      "watch": 1,
+      "watch": 0,
       "latest": "Normal"
     }
   }

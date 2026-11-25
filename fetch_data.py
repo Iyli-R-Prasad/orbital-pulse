@@ -153,7 +153,7 @@ def process_site(site_id, name, lat, lon):
     anomalies = []
     for _, temp, bad, water, _, _ in scenes:
         cy0, cx0 = temp.shape[0] // 2, temp.shape[1] // 2
-        sub_t, sub_b = box(temp, cy0, cx0, s_half), box(bad | water, cy0, cx0, s_half)
+        sub_t, sub_b = box(temp, cy0, cx0, s_half), box(bad, cy0, cx0, s_half)  # water allowed (lakeside plants)
         if sub_t.shape != (2 * s_half + 1, 2 * s_half + 1):
             continue
         if sub_b.mean() < 0.1:

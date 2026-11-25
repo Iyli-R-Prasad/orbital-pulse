@@ -19,13 +19,13 @@ st.set_page_config(page_title="Orbital Industrial Pulse", page_icon="🛰️", l
 # =====================================================================
 SITES = {
     "jsw": {"name": "JSW Vijayanagar Steel Plant", "country": "India", "type": "Steel plant",
-            "lat": 15.1764, "lon": 76.6433, "file_name": "JSW_Vijayanagar_Steel_India"},
+            "lat": 15.1890, "lon": 76.6562, "file_name": "JSW_Vijayanagar_Steel_India"},
     "jamnagar": {"name": "Jamnagar Refinery", "country": "India", "type": "Oil refinery",
-                 "lat": 22.3511, "lon": 69.8597, "file_name": "Jamnagar_Refinery_India"},
+                 "lat": 22.3395, "lon": 69.8550, "file_name": "Jamnagar_Refinery_India"},
     "gary": {"name": "Gary Works Steel Plant", "country": "USA", "type": "Steel plant",
-             "lat": 41.6139, "lon": -87.3364, "file_name": "Gary_Works_Steel_USA"},
+             "lat": 41.6185, "lon": -87.3307, "file_name": "Gary_Works_Steel_USA"},
     "duisburg": {"name": "Thyssenkrupp Duisburg Steelworks", "country": "Germany", "type": "Steel plant",
-                 "lat": 51.4981, "lon": 6.7278, "file_name": "Thyssenkrupp_Duisburg_Germany"},
+                 "lat": 51.4823, "lon": 6.7199, "file_name": "Thyssenkrupp_Duisburg_Germany"},
 }
 MAIN_SITE = list(SITES.keys())[0]
 
