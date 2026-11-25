@@ -10,6 +10,8 @@ How it works (per plant):
   2. Heat signal  = plant temp - surrounding temp (removes weather/seasons).
   3. Expected heat = median of the plant's own last 6 clear passes
      (only PAST data is used, like a real live system).
+     A long-term baseline (all earlier passes) also catches slow, sustained
+     slowdowns that the short baseline would gradually get used to.
   4. Two independent checks:
        a) Physics rule  : how far below its own normal is the plant? (robust z-score)
        b) Isolation Forest: is this pass statistically unusual compared with
@@ -41,6 +43,8 @@ SEED = 42
 Z_WATCH, Z_ALERT = -1.5, -2.5          # how many "normal variations" below expected
 RATIO_WATCH, RATIO_ALERT = 0.80, 0.60  # heat as a fraction of expected
 COLD_DELTA = 0.5                       # °C above surroundings = basically no heat
+LT_MIN_HISTORY = 6                     # passes needed before the long-term baseline is used
+SUSTAINED_RATIO = 0.65                 # last 3 passes below 65 % of long-term normal
 
 
 # ------------------------------------------------------------------ data ---
@@ -75,6 +79,12 @@ def add_features(g):
     g["activity_index"] = np.clip(100 * dt / expected, 0, 100).round(0).astype(int)
     g["spread"] = spread
     g["baseline_ready"] = np.arange(len(g)) >= MIN_HISTORY
+    # long-term baseline: median of ALL earlier clear passes (catches slow, sustained slowdowns
+    # that the short 6-pass baseline gradually "gets used to")
+    lt = np.array([np.median(dt[:i]) if i >= LT_MIN_HISTORY else np.nan for i in range(len(dt))])
+    recent = pd.Series(dt).rolling(3, min_periods=3).median().to_numpy()
+    g["longterm_delta_t"] = np.round(lt, 2)
+    g["sustained_ratio"] = np.round(recent / lt, 3)
     return g
 
 
@@ -88,9 +98,10 @@ def model_inputs(df):
 
 
 # ------------------------------------------------------------ decisions ---
-def decide(delta, z, ratio, iso_anomaly, baseline_ready=True):
+def decide(delta, z, ratio, iso_anomaly, baseline_ready=True, sustained=np.nan):
     if not baseline_ready:
         return "Normal"                     # still learning this plant's normal
+    sustained_low = (not np.isnan(sustained)) and sustained <= SUSTAINED_RATIO
     rule_alert = z <= Z_ALERT and ratio <= RATIO_ALERT
     rule_watch = z <= Z_WATCH and ratio <= RATIO_WATCH
     severe_drop = ratio <= 0.35 and z <= -1.5
@@ -100,6 +111,8 @@ def decide(delta, z, ratio, iso_anomaly, baseline_ready=True):
         return "Bottleneck Alert"
     if rule_alert or rule_watch or severe_drop or (iso_anomaly and z <= -1.0):
         return "Watch (Low)"
+    if sustained_low:
+        return "Watch (Sustained low)"
     return "Normal"
 
 
@@ -114,6 +127,10 @@ def explain(r):
         return f"Almost no waste heat - looks shut down or idle. {base}. Both checks agree."
     if lvl == "Bottleneck Alert":
         return f"Much cooler than usual - running far below capacity. {base}. Both checks agree."
+    if lvl == "Watch (Sustained low)":
+        return (f"Running below its long-term normal for several passes - possible sustained slowdown "
+                f"or maintenance. Recent heat is {100 * r['sustained_ratio']:.0f}% of the long-term "
+                f"normal ({r['longterm_delta_t']:.1f} °C).")
     if lvl == "Watch (Low)":
         return f"Cooler than usual - possible slowdown, monitor next pass. {base}."
     if diff > 2 * r["spread"]:
@@ -126,9 +143,10 @@ def score(df, iso, threshold):
     df = df.copy()
     df["anomaly_score"] = s.round(3)
     df["iso_anomaly"] = s >= threshold
-    df["risk_level"] = [decide(d, z, r, a, b) for d, z, r, a, b in
+    sus = df["sustained_ratio"] if "sustained_ratio" in df else pd.Series(np.nan, index=df.index)
+    df["risk_level"] = [decide(d, z, r, a, b, u) for d, z, r, a, b, u in
                         zip(df["delta_t"], df["z_score"], df["heat_ratio"], df["iso_anomaly"],
-                            df["baseline_ready"])]
+                            df["baseline_ready"], sus.astype(float))]
     df["anomaly_flag"] = df["risk_level"].str.contains("Alert").astype(int)
     return df
 
@@ -168,7 +186,8 @@ def main():
     res["supply_chain_alert"] = res.apply(explain, axis=1)
 
     out = res[["date", "site_name", "activity_index", "anomaly_flag", "risk_level",
-               "supply_chain_alert", "anomaly_score", "expected_delta_t", "heat_ratio", "z_score"]].copy()
+               "supply_chain_alert", "anomaly_score", "expected_delta_t", "heat_ratio", "z_score",
+               "longterm_delta_t", "sustained_ratio"]].copy()
     out["date"] = out["date"].dt.strftime("%Y-%m-%d")
     out.to_csv(OUTPUT_CSV, index=False)
 
@@ -178,13 +197,13 @@ def main():
         s: validate(feat[feat["site_name"] == s], iso, threshold, trials=200)["shutdown_detection_pct"]
         for s in feat["site_name"].unique()}
     report = {
-        "model": "Hybrid: physics rule (robust z-score vs plant's own baseline) + Isolation Forest",
+        "model": "Hybrid: physics rules (short-term + long-term baselines) + Isolation Forest",
         "passes_analysed": int(len(res)),
         "plants": int(res["site_name"].nunique()),
         "validation": val,
         "per_plant": {s: {"passes": int(len(g)),
                           "alerts": int(g["anomaly_flag"].sum()),
-                          "watch": int((g["risk_level"] == "Watch (Low)").sum()),
+                          "watch": int(g["risk_level"].str.startswith("Watch").sum()),
                           "latest": g.iloc[-1]["risk_level"]}
                       for s, g in res.groupby("site_name")},
     }

@@ -45,6 +45,29 @@ ECONOMICS = {
 
 
 # =====================================================================
+# EDIT HERE 3: REAL-WORLD EVENTS (publicly reported, used to sanity-check the satellite signal)
+# =====================================================================
+EVENTS = {
+    "jsw": {
+        "title": "Blast Furnace 3 offline for upgrade",
+        "start": "2025-09-25", "end": "2026-06-20",
+        "story": ("JSW Steel reported that Blast Furnace 3 at Vijayanagar was shut from late September 2025 "
+                  "for a capacity upgrade (3 to 4.5 MTPA) and restarted in June 2026."),
+        "sources": ["https://themachinemaker.com/news/jsw-steel-posts-24-75-lakh-tonnes-of-consolidated-crude-steel-output-in-january-2026/",
+                    "https://gmk.center/en/news/jsw-steel-increased-steel-output-by-3-y-y-in-april-june/"],
+    },
+    "jamnagar": {
+        "title": "Reported crude-unit maintenance (approx. dates)",
+        "start": "2026-05-15", "end": "2026-06-12",
+        "story": ("Reliance reported a planned 3-4 week maintenance shutdown of a crude unit at the Jamnagar "
+                  "complex starting around mid-May 2026; India's fuel exports fell in May."),
+        "sources": ["https://hydrocarbonprocessing.com/news/2026/05/indias-reliance-to-shut-some-units-at-660-000-bpd-refinery/",
+                    "https://www.outlookbusiness.com/news/indias-fuel-exports-fall-to-lowest-since-2022-amid-refinery-maintenance-domestic-demand"],
+    },
+}
+
+
+# =====================================================================
 # DATA LOADING
 # =====================================================================
 def preliminary_scores(d):
@@ -271,6 +294,34 @@ if not events.empty:
     wf.add_hline(y=0, line_color="#555", line_width=1)
     wf.update_layout(yaxis_title="Heat vs normal (°C)", height=300, margin=dict(l=10, r=10, t=10, b=10))
     st.plotly_chart(wf, width="stretch")
+
+# =====================================================================
+# REAL-WORLD CHECK
+# =====================================================================
+ev = EVENTS.get(site_id)
+if ev:
+    st.subheader("📰 Real-world check")
+    st.markdown(f"**{ev['title']}.** {ev['story']}")
+    s0, s1 = pd.Timestamp(ev["start"]), pd.Timestamp(ev["end"])
+    inside = data[(data["date"] >= s0) & (data["date"] <= s1)]["thermal_delta"]
+    outside = data[(data["date"] < s0) | (data["date"] > s1)]["thermal_delta"]
+    rf = go.Figure()
+    rf.add_vrect(x0=max(s0, data["date"].min()), x1=min(s1, data["date"].max()),
+                 fillcolor="orange", opacity=0.15, line_width=0,
+                 annotation_text="reported event window", annotation_position="top left")
+    rf.add_trace(go.Scatter(x=data["date"], y=data["thermal_delta"], mode="lines+markers",
+                            name="Heat above surroundings", line=dict(color="#d62728", width=3)))
+    rf.update_layout(yaxis_title="Heat above surroundings (°C)", height=300,
+                     margin=dict(l=10, r=10, t=30, b=10), showlegend=False)
+    st.plotly_chart(rf, width="stretch")
+    if len(inside) and len(outside):
+        k1, k2, k3 = st.columns(3)
+        k1.metric("During reported event (median)", f"{inside.median():.1f} °C", help=f"{len(inside)} clear passes")
+        k2.metric("Outside event (median)", f"{outside.median():.1f} °C", help=f"{len(outside)} clear passes")
+        k3.metric("Difference", f"{100 * (inside.median() / outside.median() - 1):+.0f}%")
+    st.caption("Honest note: the satellite signal is consistent with these reports, but a small number of passes "
+               "and a 300 m measuring spot cannot prove which unit changed. Sources: "
+               + " · ".join(f"[{i + 1}]({u})" for i, u in enumerate(ev["sources"])))
 
 # =====================================================================
 # MODEL VALIDATION
