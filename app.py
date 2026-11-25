@@ -2,7 +2,6 @@
 Orbital Industrial Pulse - Dashboard (Person 3)
 
 Run:
-    py make_fake_data.py          (only until real data arrives)
     py -m streamlit run app.py
 """
 import os
@@ -16,17 +15,23 @@ import streamlit as st
 st.set_page_config(page_title="Orbital Industrial Pulse", page_icon="🛰️", layout="wide")
 
 # =====================================================================
-# EDIT HERE 1: SITES  (add / change plants; first one = main site)
+# EDIT HERE 1: SITES  (keys of "file_name" must match site_name in the data)
 # =====================================================================
 SITES = {
-    "jsw": {"name": "JSW Vijayanagar Steel Plant", "country": "India",
-            "type": "Steel plant", "lat": 15.18, "lon": 76.66},
-    "scherer": {"name": "Plant Scherer Power Station", "country": "USA",
-                "type": "Coal power plant", "lat": 33.06, "lon": -83.81},
-    "pohang": {"name": "POSCO Pohang Steelworks", "country": "South Korea",
-               "type": "Steel plant", "lat": 36.00, "lon": 129.38},
+    "jsw": {"name": "JSW Vijayanagar Steel Plant", "country": "India", "type": "Steel plant",
+            "lat": 15.1764, "lon": 76.6433, "file_name": "JSW_Vijayanagar_Steel_India"},
+    "jamnagar": {"name": "Jamnagar Refinery", "country": "India", "type": "Oil refinery",
+                 "lat": 22.3511, "lon": 69.8597, "file_name": "Jamnagar_Refinery_India"},
+    "gary": {"name": "Gary Works Steel Plant", "country": "USA", "type": "Steel plant",
+             "lat": 41.6139, "lon": -87.3364, "file_name": "Gary_Works_Steel_USA"},
+    "duisburg": {"name": "thyssenkrupp Duisburg Steelworks", "country": "Germany", "type": "Steel plant",
+                 "lat": 51.4981, "lon": 6.7278, "file_name": "Thyssenkrupp_Duisburg_Germany"},
 }
 MAIN_SITE = list(SITES.keys())[0]
+
+SAT_FILE = "satellite_data.csv"   # from Person 1 (all sites in one file)
+AI_FILE = "ai_alerts.csv"         # from Person 2 (optional; replaces the preliminary scoring)
+MAX_CLOUD = 15                    # passes cloudier than this (%) are removed
 
 # =====================================================================
 # EDIT HERE 2: ECONOMICS  (EXAMPLE numbers - replace with Person 4's)
@@ -42,32 +47,62 @@ ECONOMICS = {
 # =====================================================================
 # DATA LOADING
 # =====================================================================
-def files_for(site_id):
-    if os.path.exists(f"{site_id}_temperatures.csv"):
-        return f"{site_id}_temperatures.csv", f"{site_id}_alerts.csv"
-    if site_id == MAIN_SITE:
-        return "temperatures.csv", "alerts.csv"
-    return None, None
+def preliminary_scores(d):
+    """Simple statistical scoring, used until Person 2's AI output arrives."""
+    base = d["thermal_delta"].median()
+    spread = max((d["thermal_delta"] - base).abs().median() * 1.4826, 1.0)
+    z = (d["thermal_delta"] - base) / spread
+    d["activity_index"] = (100 * d["thermal_delta"] / base).clip(0, 100).round(0).astype(int) if base > 0 else 50
+    d["risk_level"] = np.where(z <= -2.5, "Alert", np.where(z <= -1.5, "Watch", "Normal"))
+    d["anomaly_flag"] = (d["risk_level"] == "Alert").astype(int)
+    d["supply_chain_alert"] = [
+        f"Heat {dt - base:+.1f} °C vs normal: possible shutdown or slowdown" if r == "Alert"
+        else f"Heat {dt - base:+.1f} °C vs normal: monitor" if r == "Watch"
+        else "Normal operating heat signature"
+        for dt, r in zip(d["thermal_delta"], d["risk_level"])]
+    return d
 
 
 @st.cache_data
 def load_site(site_id, file_mtime):
-    t_file, a_file = files_for(site_id)
-    if not t_file or not (os.path.exists(t_file) and os.path.exists(a_file)):
-        return None
-    temps = pd.read_csv(t_file, parse_dates=["date"])
-    alerts = pd.read_csv(a_file, parse_dates=["date"])
-    data = temps.merge(alerts, on="date", how="inner").sort_values("date")
-    data["thermal_delta"] = data["plant_temp"] - data["ambient_temp"]
-    return data
+    if not os.path.exists(SAT_FILE):
+        return None, {}
+    raw = pd.read_csv(SAT_FILE, parse_dates=["date"])
+    d = raw[raw["site_name"] == SITES[site_id]["file_name"]].copy()
+    if d.empty:
+        return None, {}
+    d = d.rename(columns={"plant_temp_c": "plant_temp", "ambient_temp_c": "ambient_temp",
+                          "relative_temp_c": "thermal_delta"})
+    if "thermal_delta" not in d.columns:
+        d["thermal_delta"] = d["plant_temp"] - d["ambient_temp"]
+    info = {"cloudy_removed": 0, "ai_source": "preliminary"}
+    if "cloud_cover_pct" in d.columns:
+        before = len(d)
+        d = d[d["cloud_cover_pct"] <= MAX_CLOUD]
+        info["cloudy_removed"] = before - len(d)
+    d = d.sort_values("date").reset_index(drop=True)
+
+    if os.path.exists(AI_FILE):
+        ai = pd.read_csv(AI_FILE, parse_dates=["date"])
+        if "site_name" in ai.columns:
+            ai = ai[ai["site_name"] == SITES[site_id]["file_name"]].drop(columns=["site_name"])
+        keep = [c for c in ["date", "activity_index", "anomaly_flag", "risk_level", "supply_chain_alert"]
+                if c in ai.columns]
+        if len(ai) and {"activity_index", "risk_level"} <= set(keep):
+            d = d.merge(ai[keep], on="date", how="inner")
+            if "anomaly_flag" not in d.columns:
+                d["anomaly_flag"] = d["risk_level"].astype(str).str.lower().str.contains("alert").astype(int)
+            info["ai_source"] = "model"
+            return d, info
+    return preliminary_scores(d), info
 
 
 def mtime(site_id):
-    t, a = files_for(site_id)
-    try:
-        return os.path.getmtime(t) + os.path.getmtime(a)
-    except (TypeError, OSError):
-        return 0
+    t = 0
+    for f in (SAT_FILE, AI_FILE):
+        if os.path.exists(f):
+            t += os.path.getmtime(f)
+    return t
 
 
 # =====================================================================
@@ -83,7 +118,7 @@ with st.sidebar:
     st.divider()
     st.caption("Works for any industrial site on Earth: satellites cover the whole planet.")
 
-data = load_site(site_id, mtime(site_id))
+data, info = load_site(site_id, mtime(site_id))
 
 # =====================================================================
 # HEADER + HOW IT WORKS
@@ -103,6 +138,42 @@ for col, icon, title, text in [
             st.markdown(f"### {icon}")
             st.markdown(f"**{title}**")
             st.caption(text)
+
+st.divider()
+
+# =====================================================================
+# WORLD OVERVIEW (all sites, coloured by latest status)
+# =====================================================================
+STATUS_COLOR = {"alert": "#e02424", "watch": "#ff9f1c", "normal": "#1fa34a", "none": "#9e9e9e"}
+
+
+def site_status(sid):
+    d, _ = load_site(sid, mtime(sid))
+    if d is None or d.empty:
+        return "none", None
+    lv = str(d.iloc[-1]["risk_level"]).lower()
+    key = "alert" if "alert" in lv else "watch" if "watch" in lv else "normal"
+    return key, int(d.iloc[-1]["activity_index"])
+
+
+rows = []
+for sid, s in SITES.items():
+    key, act = site_status(sid)
+    rows.append({"lat": s["lat"], "lon": s["lon"], "color": STATUS_COLOR[key],
+                 "Site": s["name"], "Country": s["country"],
+                 "Status": {"alert": "🔴 Alert", "watch": "🟠 Watch", "normal": "🟢 Normal",
+                            "none": "⚪ No data yet"}[key],
+                 "Activity": "-" if act is None else f"{act}/100"})
+overview = pd.DataFrame(rows)
+
+st.subheader("🌍 Global overview")
+g1, g2 = st.columns([3, 2])
+with g1:
+    st.map(overview, latitude="lat", longitude="lon", color="color", size=80000, zoom=0, height=320)
+with g2:
+    for _, r in overview.iterrows():
+        st.markdown(f"{r['Status'].split()[0]} **{r['Site']}**  \n{r['Country']} · Activity {r['Activity']}")
+    st.caption("Pick a site in the left sidebar (») to see its details.")
 
 st.divider()
 
@@ -133,6 +204,10 @@ c1.metric("Activity Index", f"{int(latest['activity_index'])}/100",
 c2.metric("Plant temperature", f"{latest['plant_temp']:.1f} °C")
 c3.metric("Heat above surroundings", f"{latest['thermal_delta']:.1f} °C")
 c4.metric("Shutdown alerts (period)", int(data["anomaly_flag"].sum()))
+src = ("AI model (Isolation Forest)" if info.get("ai_source") == "model"
+       else "preliminary statistical baseline (AI model results coming)")
+st.caption(f"Real Landsat 8/9 thermal data · {len(data)} clear passes · "
+           f"{info.get('cloudy_removed', 0)} cloudy passes removed (> {MAX_CLOUD}% cloud) · Scoring: {src}")
 
 # =====================================================================
 # MAP + ACTIVITY GRAPH
@@ -164,16 +239,38 @@ with right:
 # =====================================================================
 # ALERT LOG
 # =====================================================================
+normal_delta = data.loc[data["risk_level"].astype(str).str.lower() == "normal", "thermal_delta"].median()
+if pd.isna(normal_delta):
+    normal_delta = data["thermal_delta"].median()
+data["heat_vs_normal"] = (data["thermal_delta"] - normal_delta).round(1)
+
 events = data[data["risk_level"].astype(str).str.lower() != "normal"]
 if not events.empty:
     st.subheader("🚨 Alert log")
-    cols = ["date", "risk_level", "activity_index"]
+    cols = ["date", "risk_level", "activity_index", "heat_vs_normal"]
     if "supply_chain_alert" in data.columns:
         cols.append("supply_chain_alert")
     log = events[cols].copy()
     log["date"] = log["date"].dt.strftime("%d %b %Y")
-    log.columns = [c.replace("_", " ").title() for c in cols]
+    log = log.rename(columns={"date": "Date", "risk_level": "Risk level", "activity_index": "Activity",
+                              "heat_vs_normal": "Heat vs normal (°C)",
+                              "supply_chain_alert": "What it means"})
     st.dataframe(log, width="stretch", hide_index=True)
+    st.download_button("📥 Download alert report (CSV)", log.to_csv(index=False).encode("utf-8"),
+                       file_name=f"{site_id}_alert_report.csv", mime="text/csv")
+
+    # ---------- WHY WAS THIS FLAGGED ----------
+    st.subheader("🔍 Why did the AI flag these dates?")
+    st.caption(f"Normally this plant runs about {normal_delta:.1f} °C hotter than its surroundings. "
+               "Bars show how far below that normal level the heat fell on each date.")
+    wf = go.Figure(go.Bar(
+        x=data["date"], y=data["heat_vs_normal"],
+        marker_color=["#e02424" if "alert" in str(r).lower() else "#ff9f1c" if "watch" in str(r).lower()
+                      else "#9ecae1" for r in data["risk_level"]],
+        hovertemplate="%{x|%d %b %Y}<br>%{y:+.1f} °C vs normal<extra></extra>"))
+    wf.add_hline(y=0, line_color="#555", line_width=1)
+    wf.update_layout(yaxis_title="Heat vs normal (°C)", height=300, margin=dict(l=10, r=10, t=10, b=10))
+    st.plotly_chart(wf, width="stretch")
 
 # =====================================================================
 # TEMPERATURE GRAPH (thermal delta idea)
@@ -193,32 +290,18 @@ st.plotly_chart(tfig, width="stretch")
 # HEAT PICTURES
 # =====================================================================
 st.subheader("🔥 Satellite heat view: normal vs. shutdown")
-
-
-def fake_heatmap(intensity, seed):
-    rng = np.random.default_rng(seed)
-    x, y = np.meshgrid(np.linspace(-1, 1, 60), np.linspace(-1, 1, 60))
-    return 28 + rng.normal(0, 0.6, x.shape) + intensity * np.exp(-(x**2 + y**2) * 8)
-
-
 h1, h2 = st.columns(2)
-for col, title, img, intensity, seed in [
-    (h1, "Normal operation", f"{site_id}_heat_normal.png", 18, 1),
-    (h2, "Shutdown detected", f"{site_id}_heat_shutdown.png", 4, 2),
-]:
-    if site_id == MAIN_SITE and not os.path.exists(img):
-        img = img.replace(f"{site_id}_", "")
-    with col:
-        st.markdown(f"**{title}**")
-        if os.path.exists(img):
-            st.image(img, width="stretch")
-        else:
-            hm = px.imshow(fake_heatmap(intensity, seed), color_continuous_scale="inferno",
-                           zmin=25, zmax=48, labels=dict(color="°C"))
-            hm.update_layout(height=300, margin=dict(l=0, r=0, t=0, b=0))
-            hm.update_xaxes(showticklabels=False)
-            hm.update_yaxes(showticklabels=False)
-            st.plotly_chart(hm, width="stretch")
+imgs = [(h1, "Normal operation", f"{site_id}_heat_normal.png"),
+        (h2, "Shutdown / low activity", f"{site_id}_heat_shutdown.png")]
+if not any(os.path.exists(i[2]) for i in imgs):
+    st.info("Thermal images for this site will appear here once the data team adds "
+            f"`{site_id}_heat_normal.png` and `{site_id}_heat_shutdown.png`.")
+else:
+    for col, title, img in imgs:
+        with col:
+            st.markdown(f"**{title}**")
+            if os.path.exists(img):
+                st.image(img, width="stretch")
 
 # =====================================================================
 # ECONOMIC IMPACT
@@ -236,6 +319,20 @@ with e2:
         st.markdown(f"**Pricing:** {ECONOMICS['price']}")
         st.markdown(f"**Value:** {ECONOMICS['value']}")
         st.markdown(f"**Market:** {ECONOMICS['market']}")
+
+# ---------- VALUE AT RISK CALCULATOR ----------
+st.subheader("🧮 Value-at-risk calculator")
+st.caption("Estimate how much production was at risk during the alerts. Change the numbers to fit any plant.")
+v1, v2, v3 = st.columns(3)
+capacity = v1.number_input("Plant output (tonnes per day)", min_value=0, value=30000, step=1000)
+price = v2.number_input("Price per tonne (US$)", min_value=0, value=500, step=50)
+days = v3.number_input("Days of disruption per alert", min_value=0, value=3, step=1)
+n_alerts = int(data["risk_level"].astype(str).str.lower().str.contains("alert").sum())
+per_alert = capacity * price * days
+r1, r2 = st.columns(2)
+r1.metric("Output at risk per alert", f"${per_alert:,.0f}")
+r2.metric(f"Total across {n_alerts} alert(s)", f"${per_alert * n_alerts:,.0f}")
+st.caption("Example inputs only: replace with real plant capacity and market prices.")
 
 with st.expander("📄 See the data"):
     st.dataframe(data, width="stretch")
