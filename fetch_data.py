@@ -28,6 +28,7 @@ SITES = [
     ("jamnagar", "Jamnagar_Refinery_India", 22.3511, 69.8597),
     ("gary", "Gary_Works_Steel_USA", 41.6139, -87.3364),
     ("duisburg", "Thyssenkrupp_Duisburg_Germany", 51.4981, 6.7278),
+    ("jamshedpur", "Tata_Steel_Jamshedpur_India", 22.7900, 86.1900),
 ]
 START, END = "2025-11-01", "2026-11-01"
 SCENE_CLOUD_MAX = 60        # scene-level filter is loose; pixel mask does the real work

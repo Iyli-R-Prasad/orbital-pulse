@@ -37,10 +37,22 @@ MAX_CLOUD = 15                    # passes cloudier than this (%) are removed
 # EDIT HERE 2: ECONOMICS  (EXAMPLE numbers - replace with Person 4's)
 # =====================================================================
 ECONOMICS = {
-    "customers": ["Commodity traders", "Steel & power buyers", "Insurers & banks", "Governments"],
-    "price": "$2,000 per site per month (example)",
-    "value": "One early shutdown alert can save a buyer weeks of supply delay (example)",
-    "market": "Thousands of major plants worldwide (example)",
+    "customers": [
+        "Commodity traders & hedge funds - early signal before official output reports",
+        "Steel / fuel buyers - supplier risk alerts to re-plan sourcing",
+        "Insurers & banks - monitor plants they insure or lend to",
+        "Governments - industrial activity where official data is slow or missing",
+    ],
+    "pricing": [
+        ("Starter", "US$500 per site / month", "a buyer watching its key suppliers"),
+        ("Portfolio", "US$15,000 / month for 50 sites", "a trading desk or insurer"),
+        ("Enterprise / API", "US$250,000 / year, global coverage", "hedge funds, governments"),
+    ],
+    "cost": "Near-zero data cost: Landsat is free, and processing one site costs cents of cloud compute.",
+    "market": ("Global Energy Monitor tracks 550+ steel plants of 1 Mt/yr or more, plus refineries and power "
+               "plants: 1,000+ large sites to monitor. Hedge funds alone spent about US$2.8 billion on "
+               "alternative data in 2025 (Neudata)."),
+    "goal": "Target: 50 customers x ~US$100k/yr = ~US$5M annual revenue.",
 }
 
 
@@ -64,6 +76,24 @@ EVENTS = {
         "sources": ["https://hydrocarbonprocessing.com/news/2026/05/indias-reliance-to-shut-some-units-at-660-000-bpd-refinery/",
                     "https://www.outlookbusiness.com/news/indias-fuel-exports-fall-to-lowest-since-2022-amid-refinery-maintenance-domestic-demand"],
     },
+}
+
+
+# =====================================================================
+# EDIT HERE 4: VALUE-AT-RISK DEFAULTS (real capacities and recent market prices)
+# =====================================================================
+CALC = {
+    "jsw": {"unit": "tonnes", "per_year": 17_500_000, "price": 650, "price_unit": "tonne",
+            "note": "Capacity 17.5 MTPA (JSW). Price ~US$650/t: Indian domestic HRC, Mumbai, Oct 2026 (SMM)."},
+    "jamnagar": {"unit": "barrels", "per_year": 1_400_000 * 365, "price": 80, "price_unit": "barrel",
+                 "note": "Capacity ~1.4 million barrels/day (Reliance complex). Price: Brent crude per barrel - "
+                         "check the live price before presenting."},
+    "gary": {"unit": "short tons", "per_year": 7_500_000, "price": 1350, "price_unit": "short ton",
+             "note": "Capacity 7.5 million net tons/yr (U.S. Steel). Price ~US$1,350/short ton: US HRC spot, "
+                     "mid-Nov 2026 (Kallanish via GMK Center)."},
+    "duisburg": {"unit": "tonnes", "per_year": 11_000_000, "price": 900, "price_unit": "tonne",
+                 "note": "~11 million t crude steel/yr (thyssenkrupp Steel). Price ~US$900/t: EU HRC offers "
+                         "for Nov 2026 deliveries (BigMint via GMK Center)."},
 }
 
 
@@ -380,31 +410,43 @@ else:
 # =====================================================================
 st.divider()
 st.subheader("💰 Who pays for this, and how much is it worth?")
-e1, e2 = st.columns([1, 2])
+e1, e2 = st.columns([1, 1])
 with e1:
     with st.container(border=True):
-        st.markdown("**Customers**")
+        st.markdown("**Who pays**")
         for c in ECONOMICS["customers"]:
             st.markdown(f"- {c}")
 with e2:
     with st.container(border=True):
-        st.markdown(f"**Pricing:** {ECONOMICS['price']}")
-        st.markdown(f"**Value:** {ECONOMICS['value']}")
-        st.markdown(f"**Market:** {ECONOMICS['market']}")
+        st.markdown("**Proposed pricing**")
+        for tier, price_txt, who in ECONOMICS["pricing"]:
+            st.markdown(f"- **{tier}:** {price_txt} - _{who}_")
+        st.markdown(f"**Costs:** {ECONOMICS['cost']}")
+with st.container(border=True):
+    st.markdown(f"**Market:** {ECONOMICS['market']}  \n**{ECONOMICS['goal']}**")
 
 # ---------- VALUE AT RISK CALCULATOR ----------
 st.subheader("🧮 Value-at-risk calculator")
-st.caption("Estimate how much production was at risk during the alerts. Change the numbers to fit any plant.")
-v1, v2, v3 = st.columns(3)
-capacity = v1.number_input("Plant output (tonnes per day)", min_value=0, value=30000, step=1000)
-price = v2.number_input("Price per tonne (US$)", min_value=0, value=500, step=50)
-days = v3.number_input("Days of disruption per alert", min_value=0, value=3, step=1)
-n_alerts = int(data["risk_level"].astype(str).str.lower().str.contains("alert").sum())
-per_alert = capacity * price * days
-r1, r2 = st.columns(2)
-r1.metric("Output at risk per alert", f"${per_alert:,.0f}")
-r2.metric(f"Total across {n_alerts} alert(s)", f"${per_alert * n_alerts:,.0f}")
-st.caption("Example inputs only: replace with real plant capacity and market prices.")
+cd = CALC.get(site_id, {"unit": "tonnes", "per_year": 10_000_000, "price": 600, "price_unit": "tonne", "note": ""})
+st.caption(f"How much output is at stake when this plant slows down. Pre-filled with real figures for "
+           f"{site['name']}; change any number to test scenarios.")
+v1, v2, v3, v4 = st.columns(4)
+per_day = v1.number_input(f"Plant output ({cd['unit']}/day)", min_value=0,
+                          value=int(round(cd["per_year"] / 365, -2)), step=1000, key=f"cap_{site_id}")
+price = v2.number_input(f"Price per {cd['price_unit']} (US$)", min_value=0, value=int(cd["price"]),
+                        step=10, key=f"price_{site_id}")
+share = v3.number_input("Share of plant affected (%)", min_value=0, max_value=100, value=20, step=5,
+                        key=f"share_{site_id}", help="e.g. one blast furnace out of several")
+days = v4.number_input("Days of disruption", min_value=0, value=8, step=1, key=f"days_{site_id}",
+                       help="8 days = time between two Landsat passes")
+daily_value = per_day * price
+at_risk = daily_value * share / 100 * days
+r1, r2, r3 = st.columns(3)
+r1.metric("Plant output value per day", f"${daily_value / 1e6:,.1f}M")
+r2.metric("Output at risk in this scenario", f"${at_risk / 1e6:,.1f}M")
+r3.metric("If an alert gives buyers 1 week earlier warning",
+          f"${daily_value * share / 100 * 7 / 1e6:,.1f}M", help="value of the disrupted supply buyers can re-plan for")
+st.caption("Sources: " + cd["note"] + " Scenario values are estimates, not forecasts.")
 
 with st.expander("📄 See the data"):
     st.dataframe(data, width="stretch")
